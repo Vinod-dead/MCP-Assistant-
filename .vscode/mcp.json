@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "files":     { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.files_server"],     "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "db":        { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.db_server"],        "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "repo":      { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.repo_server"],      "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}", "REPO_ROOT": "${workspaceFolder}" } },
+    "cloud":     { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.cloud_server"],     "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "apps":      { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.apps_server"],      "envFile": "${workspaceFolder}/.env", "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "web":       { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.web_server"],       "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "api":       { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.api_server"],       "envFile": "${workspaceFolder}/.env", "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "utility":   { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.utility_server"],   "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "knowledge": { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.knowledge_server"], "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } },
+    "memory":    { "type": "stdio", "command": "python", "args": ["-m", "mcp_assistant.servers.memory_server"],    "env": { "MCP_ASSISTANT_HOME": "${workspaceFolder}" } }
+  }
+}

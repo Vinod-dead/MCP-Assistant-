@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Setup: create .venv and install",
+      "type": "shell",
+      "command": "python3 -m venv .venv && .venv/bin/python -m pip install -e \".[dev]\"",
+      "windows": { "command": "python -m venv .venv; .venv\\Scripts\\python -m pip install -e \".[dev]\"" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: pytest",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m pytest",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Eval: golden set (mock)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m mcp_assistant.evaluate --provider mock",
+      "problemMatcher": []
+    }
+  ]
+}

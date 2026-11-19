@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Assistant (Gemini if key set, else offline)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.cli",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Assistant (offline mock, no API key)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.cli",
+      "args": ["--provider", "mock"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Assistant (read-only profile)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.cli",
+      "args": ["--profile", "readonly"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Assistant (Gemini + self-check)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.cli",
+      "args": ["--provider", "gemini", "--reflect"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Eval (mock - plumbing check)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.evaluate",
+      "args": ["--provider", "mock"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Eval (Gemini - real accuracy)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.evaluate",
+      "args": ["--provider", "gemini"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Seed demo database",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/seed_demo_data.py",
+      "console": "integratedTerminal"
+    }
+  ]
+}

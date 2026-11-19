@@ -1,0 +1,43 @@
+# Permission policy. Pick a profile with:  mcp-assistant --profile readonly|standard|admin
+#
+# Decision order for each tool:  matching rule -> read-only tools -> destructive tools -> other state-changing tools
+# Actions: allow (run immediately) | approve (ask the human first) | deny (never exposed to the model)
+# Rules match the qualified tool name "<server>__<tool>" using shell-style wildcards; first match wins.
+
+limits:
+  max_steps: 8                 # LLM round-trips per user request
+  max_tool_calls_per_turn: 12
+  max_cost_usd_per_turn: 0.25  # uses config/pricing.yaml estimates
+  rate_limit_per_minute: 40    # tool calls per minute across the session
+  max_result_chars: 8000       # tool output is truncated before the model sees it
+  max_history_messages: 40
+
+profiles:
+  readonly:
+    description: Look but never touch. Every tool that changes anything is hidden from the model.
+    read_only: allow
+    non_read_only: deny
+    destructive: deny
+    rules:
+      - { match: "memory__remember", action: allow }
+      - { match: "knowledge__index_folder", action: allow }
+
+  standard:
+    description: Reads are automatic. Anything that writes, sends or creates asks you first.
+    read_only: allow
+    non_read_only: approve
+    destructive: approve
+    rules:
+      - { match: "*__delete_*", action: deny }
+      - { match: "memory__forget", action: approve }
+      - { match: "memory__remember", action: allow }
+      - { match: "knowledge__index_folder", action: allow }
+
+  admin:
+    description: Non-destructive writes run without asking; destructive ones still need approval.
+    read_only: allow
+    non_read_only: allow
+    destructive: approve
+    rules:
+      - { match: "apps__*", action: approve }   # never send messages/emails without a human
+      - { match: "api__api_call", action: approve }

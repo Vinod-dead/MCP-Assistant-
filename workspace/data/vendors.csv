@@ -1,0 +1,6 @@
+vendor_id,name,city,gstin,payment_terms_days,rating
+V001,Sundaram Packaging,Chennai,33AAAAA0000A1Z5,30,4.5
+V002,Lakshmi Paper Mills,Coimbatore,33BBBBB1111B1Z6,45,4.1
+V003,Ganga Logistics,Kolkata,19CCCCC2222C1Z7,15,3.8
+V004,Himalaya Inks,Dehradun,05DDDDD3333D1Z8,30,4.7
+V005,Deccan Cartons,Hyderabad,36EEEEE4444E1Z9,60,3.9

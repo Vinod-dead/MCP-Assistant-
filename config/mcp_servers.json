@@ -1,0 +1,78 @@
+{
+  "mcpServers": {
+    "files": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.files_server"],
+      "env": { "FILES_ROOT": "${FILES_ROOT}" }
+    },
+    "db": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.db_server"],
+      "env": { "DATABASE_URL": "${DATABASE_URL}" }
+    },
+    "repo": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.repo_server"],
+      "env": { "REPO_ROOT": "${REPO_ROOT}", "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
+    },
+    "cloud": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.cloud_server"],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "${GOOGLE_CLOUD_PROJECT}",
+        "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS}",
+        "BQ_MAX_BYTES": "${BQ_MAX_BYTES}",
+        "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}",
+        "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}",
+        "AWS_SESSION_TOKEN": "${AWS_SESSION_TOKEN}",
+        "AWS_DEFAULT_REGION": "${AWS_DEFAULT_REGION}",
+        "AWS_PROFILE": "${AWS_PROFILE}",
+        "AZURE_STORAGE_CONNECTION_STRING": "${AZURE_STORAGE_CONNECTION_STRING}"
+      }
+    },
+    "apps": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.apps_server"],
+      "env": {
+        "APPS_DRY_RUN": "${APPS_DRY_RUN}",
+        "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+        "NOTION_TOKEN": "${NOTION_TOKEN}",
+        "GMAIL_ADDRESS": "${GMAIL_ADDRESS}",
+        "GMAIL_APP_PASSWORD": "${GMAIL_APP_PASSWORD}",
+        "GMAIL_ALLOWED_RECIPIENT_DOMAINS": "${GMAIL_ALLOWED_RECIPIENT_DOMAINS}"
+      }
+    },
+    "web": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.web_server"]
+    },
+    "api": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.api_server"],
+      "env": {
+        "API_ALLOWLIST": "${API_ALLOWLIST}",
+        "API_BEARER_TOKENS": "${API_BEARER_TOKENS}",
+        "API_ALLOW_PRIVATE": "${API_ALLOW_PRIVATE}"
+      }
+    },
+    "utility": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.utility_server"]
+    },
+    "knowledge": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.knowledge_server"],
+      "env": {
+        "FILES_ROOT": "${FILES_ROOT}",
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "GOOGLE_API_KEY": "${GOOGLE_API_KEY}",
+        "EMBEDDING_MODEL": "${EMBEDDING_MODEL}",
+        "DISABLE_EMBEDDINGS": "${DISABLE_EMBEDDINGS}"
+      }
+    },
+    "memory": {
+      "command": "${PYTHON}",
+      "args": ["-m", "mcp_assistant.servers.memory_server"]
+    }
+  }
+}
