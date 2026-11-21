@@ -1,5 +1,5 @@
 
-"""NVIDIA NIM provider using the OpenAI-compatible Chat Completions API."""
+"""NVIDIA NIM provider using HTTPX and the OpenAI-compatible Chat Completions API."""
 from __future__ import annotations
 
 import asyncio
@@ -7,7 +7,7 @@ import json
 import os
 from typing import Any
 
-from openai import AsyncOpenAI
+import httpx
 
 from ..models import LLMResponse, Message, ToolCall, ToolInfo, Usage
 
@@ -22,13 +22,19 @@ class NvidiaLLM:
         self.model = model
         self.temperature = temperature
 
-        self.client = AsyncOpenAI(
-            base_url=os.environ.get(
-                "NVIDIA_BASE_URL",
-                "https://integrate.api.nvidia.com/v1",
-            ),
-            api_key=api_key,
+        base_url = os.environ.get(
+            "NVIDIA_BASE_URL",
+            "https://integrate.api.nvidia.com/v1",
+        ).rstrip("/")
+
+        self.url = f"{base_url}/chat/completions"
+
+        self.client = httpx.AsyncClient(
             timeout=90.0,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
         )
 
     @staticmethod
@@ -108,59 +114,85 @@ class NvidiaLLM:
             request["tools"] = tool_definitions
             request["tool_choice"] = "auto"
 
-        response = None
+        response_data = None
 
         for attempt in range(4):
             try:
-                response = await self.client.chat.completions.create(
-                    **request
+                response = await self.client.post(
+                    self.url,
+                    json=request,
                 )
+                response.raise_for_status()
+                response_data = response.json()
                 break
-            except Exception as exc:
-                status = getattr(exc, "status_code", None)
+
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+
                 if status not in (429, 500, 502, 503, 504) or attempt == 3:
+                    raise RuntimeError(
+                        f"NVIDIA API error ({status}): {exc.response.text[:2000]}"
+                    ) from exc
+
+                await asyncio.sleep(2 ** attempt)
+
+            except (httpx.TimeoutException, httpx.TransportError):
+                if attempt == 3:
                     raise
 
                 await asyncio.sleep(2 ** attempt)
 
-        if response is None:
+        if response_data is None:
             raise RuntimeError("NVIDIA API returned no response.")
 
         usage = Usage()
+        usage_data = response_data.get("usage") or {}
 
-        if response.usage:
-            usage.input_tokens = response.usage.prompt_tokens or 0
-            usage.output_tokens = response.usage.completion_tokens or 0
+        usage.input_tokens = usage_data.get("prompt_tokens") or 0
+        usage.output_tokens = usage_data.get("completion_tokens") or 0
 
-        choice = response.choices[0]
-        assistant_message = choice.message
+        choices = response_data.get("choices") or []
+        if not choices:
+            raise RuntimeError(
+                f"NVIDIA API returned no choices: {response_data}"
+            )
+
+        assistant_message = choices[0].get("message") or {}
 
         calls: list[ToolCall] = []
 
-        for index, call in enumerate(assistant_message.tool_calls or []):
+        for index, call in enumerate(
+            assistant_message.get("tool_calls") or []
+        ):
+            function = call.get("function") or {}
+            function_name = function.get("name", "unknown")
+
             try:
-                arguments = json.loads(call.function.arguments or "{}")
+                arguments = json.loads(function.get("arguments") or "{}")
+
                 if not isinstance(arguments, dict):
                     raise ValueError("Tool arguments must be a JSON object.")
+
             except (json.JSONDecodeError, ValueError) as exc:
                 raise ValueError(
-                    f"Invalid arguments returned for tool {call.function.name}: {exc}"
+                    f"Invalid arguments returned for tool "
+                    f"{function_name}: {exc}"
                 ) from exc
 
             calls.append(
                 ToolCall(
-                    id=call.id or f"call_{index}",
-                    name=call.function.name,
+                    id=call.get("id") or f"call_{index}",
+                    name=function_name,
                     args=arguments,
                 )
             )
 
         return LLMResponse(
-            text=assistant_message.content or "",
+            text=assistant_message.get("content") or "",
             tool_calls=calls,
             usage=usage,
             raw=None,
         )
 
     async def close(self) -> None:
-        await self.client.close()
+        await self.client.aclose()
