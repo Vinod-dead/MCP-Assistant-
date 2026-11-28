@@ -2,6 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Studio web UI (auto provider)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.studio",
+      "args": ["--port", "8765"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Studio web UI (offline mock)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "mcp_assistant.studio",
+      "args": ["--provider", "mock", "--port", "8765"],
+      "console": "integratedTerminal"
+    },
+    {
       "name": "Assistant (Gemini if key set, else offline)",
       "type": "debugpy",
       "request": "launch",

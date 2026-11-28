@@ -5,6 +5,7 @@ import json
 import statistics
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -83,6 +84,8 @@ class Metrics:
         if self.trace_path:
             self.trace_path.parent.mkdir(parents=True, exist_ok=True)
             record = {
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "model": self.model,
                 "question": turn.question[:200],
                 "wall_seconds": round(turn.wall_seconds, 3),
                 "llm_calls": turn.llm_calls,

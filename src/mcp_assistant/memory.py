@@ -14,8 +14,21 @@ class MemoryStore:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.items: list[dict[str, Any]] = []
-        if path.exists():
-            self.items = json.loads(path.read_text(encoding="utf-8"))
+        self._mtime = 0.0
+        self._load()
+
+    def _load(self) -> None:
+        if self.path.exists():
+            self.items = json.loads(self.path.read_text(encoding="utf-8"))
+            self._mtime = self.path.stat().st_mtime
+
+    def _refresh(self) -> None:
+        """The memory MCP server runs in its own process and writes this file; pick up its changes."""
+        try:
+            if self.path.stat().st_mtime != self._mtime:
+                self._load()
+        except FileNotFoundError:
+            self.items, self._mtime = [], 0.0
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,6 +54,7 @@ class MemoryStore:
         return False
 
     def search(self, query: str, k: int = 5) -> list[dict[str, Any]]:
+        self._refresh()
         if not self.items:
             return []
         q = tokenize(query)

@@ -138,8 +138,14 @@ class Agent:
 
     async def _llm_call(self, system: str, tools: list[ToolInfo], turn: TurnMetrics):
         t0 = time.perf_counter()
+        self.on_event("llm_start", {"step": turn.llm_calls + 1, "tools_offered": len(tools), "history_messages": len(self.history)})
         resp = await self.llm.generate(system, self.history, tools)
-        self.metrics.add_llm(turn, resp.usage.input_tokens, resp.usage.output_tokens, time.perf_counter() - t0)
+        elapsed = time.perf_counter() - t0
+        self.metrics.add_llm(turn, resp.usage.input_tokens, resp.usage.output_tokens, elapsed)
+        self.on_event("llm_call", {
+            "step": turn.llm_calls, "input_tokens": resp.usage.input_tokens, "output_tokens": resp.usage.output_tokens,
+            "ms": round(elapsed * 1000), "tool_calls": [c.name for c in resp.tool_calls],
+        })
         return resp
 
     async def _wrap_up(self, system: str, turn: TurnMetrics, reason: str) -> str:
@@ -172,7 +178,7 @@ class Agent:
         def refuse(status: str, message: str, **extra: Any) -> ToolResult:
             self.audit.write(event="tool_call", status=status, **base, **extra)
             record.append({"name": call.name, "args": call.args, "status": status})
-            self.on_event("tool_blocked", {"name": call.name, "status": status, "message": message})
+            self.on_event("tool_blocked", {"name": call.name, "status": status, "message": message, "args": base["args"]})
             turn.tool_blocked += 1
             return ToolResult(call.id, call.name, message, is_error=True)
 
@@ -192,7 +198,7 @@ class Agent:
             if not approved:
                 return refuse("declined", "The user declined this action. Do not retry it; offer an alternative.", reason=why)
 
-        self.on_event("tool_call", {"name": call.name, "args": call.args, "approval": decision.value})
+        self.on_event("tool_call", {"name": call.name, "args": redact_args(call.args), "approval": decision.value})
         t0 = time.perf_counter()
         text, is_error = await self.hub.call(call.name, call.args)
         elapsed = time.perf_counter() - t0
@@ -212,5 +218,6 @@ class Agent:
         self.audit.write(event="tool_call", status=status, **base, decision=decision.value, approved=approved,
                          ms=round(elapsed * 1000), chars=len(text), injection_flags=flags)
         record.append({"name": call.name, "args": call.args, "status": status, "ms": round(elapsed * 1000), "injection_flags": flags})
-        self.on_event("tool_result", {"name": call.name, "ok": not is_error, "ms": round(elapsed * 1000), "chars": len(text), "flags": flags})
+        self.on_event("tool_result", {"name": call.name, "ok": not is_error, "ms": round(elapsed * 1000), "chars": len(text),
+                                      "flags": flags, "output": text[:6000]})  # `output` is already redacted + scanned
         return ToolResult(call.id, call.name, text, is_error)

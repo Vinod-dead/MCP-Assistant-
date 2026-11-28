@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body { background: #0a0c12; color: #e7eaf3; }
+body { font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; background-image: radial-gradient(900px 400px at 85% -10%, #5b8cff14, transparent), radial-gradient(700px 380px at 0% 0%, #8b7bff10, transparent); background-attachment: fixed; }
+::selection { background: #5b8cff55; }
+* { scrollbar-width: thin; scrollbar-color: #2a3247 transparent; }
+@layer components {
+.card { @apply rounded-xl border border-line bg-panel/90 backdrop-blur-sm; }
+.btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-panel2 px-3 py-1.5 text-sm font-medium text-ink transition hover:border-accent/50 hover:bg-[#1b2233] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent; }
+.btn-primary { @apply border-accent/60 bg-gradient-to-b from-accent to-[#3f6fe0] text-white hover:from-[#6f9bff] hover:to-[#4a79ee] hover:border-accent; }
+.btn-danger { @apply border-bad/40 text-bad hover:bg-bad/10 hover:border-bad; }
+.input { @apply w-full rounded-lg border border-line bg-bg/70 px-3 py-1.5 text-sm text-ink placeholder:text-mute/70 focus:border-accent/70 focus:outline-none focus:ring-1 focus:ring-accent/40; }
+.label { @apply text-[11px] font-medium uppercase tracking-wider text-mute; }
+.th { @apply sticky top-0 whitespace-nowrap bg-panel2 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-mute; }
+.td { @apply whitespace-nowrap px-3 py-1.5 font-mono text-[12.5px] text-ink/90; }
+.sk { @apply animate-pulse rounded-md bg-line/60; }
+}
+.md p { @apply my-2 leading-relaxed; } .md ul { @apply my-2 list-disc pl-5; } .md ol { @apply my-2 list-decimal pl-5; } .md a { @apply text-accent underline; }
+.md code { @apply rounded bg-bg px-1 py-0.5 font-mono text-[12.5px]; } .md pre { @apply my-2 overflow-x-auto rounded-lg border border-line bg-bg p-3; } .md pre code { @apply bg-transparent p-0; }
+.md table { @apply my-2 w-full border-collapse text-sm; } .md th, .md td { @apply border border-line px-2 py-1 text-left; } .md th { @apply bg-panel2; }
+.md h1,.md h2,.md h3 { @apply mt-3 mb-1 font-semibold; }
+.hljs-keyword,.hljs-built_in { color: #8b7bff } .hljs-string { color: #34d399 } .hljs-number { color: #fbbf24 } .hljs-comment { color: #5d667c } .hljs-title { color: #5b8cff }

@@ -1,15 +1,15 @@
-# MCP Assistant
+# MCP Assistant + Studio
 
 An AI assistant that connects to your **files, databases, code, cloud, apps, the web and any API** through the
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) — with permissions, human approval, an audit log,
-metrics and an eval harness built around it. Python, runs in VS Code, uses **Gemini** (or runs offline without a key).
+metrics and an eval harness built around it. Python, runs in VS Code, talks to **NVIDIA NIM** (HTTPX, no OpenAI SDK) or **Gemini**, or runs offline with a mock model. It has two front doors that share one runtime: a **CLI** and the **MCP Assistant Studio** web dashboard.
 
 ```
                         ┌───────────────────────── host (this repo) ─────────────────────────┐
   you ──► CLI / VS Code │  Agent loop (ReAct)  ──►  Policy (allow / approve / deny)          │
                         │   │  memory + RAG ctx        │      Audit log · Secret redaction    │
                         │   ▼                          ▼      Injection scan · Budgets        │
-                        │  LLM (Gemini | mock)      MCP Hub  (parallel stdio clients)         │
+                        │  LLM (NVIDIA|Gemini|mock)    MCP Hub  (parallel stdio clients)         │
                         │  Metrics: tokens, tok/s, p95, $/request                             │
                         └──────────────────────────────┬─────────────────────────────────────┘
         ┌────────┬────────┬────────┬────────┬──────────┼─────────┬────────┬──────────┬────────┐
@@ -50,7 +50,7 @@ cost per request), optional self-reflection pass, and a golden-set eval gate for
    ```
    Pick the `.venv` interpreter when VS Code asks (`Ctrl+Shift+P → Python: Select Interpreter`).
 3. **Try it with no API key:** press `F5` → *Assistant (offline mock, no API key)*. (A keyword router stands in for the model so you can see tools, approvals and the audit log working.)
-4. **Real assistant:** copy `.env.example` to `.env`, set `GEMINI_API_KEY` ([get one](https://aistudio.google.com/apikey)), press `F5` → *Assistant (Gemini …)*.
+4. **Real assistant:** copy `.env.example` to `.env` and set `NVIDIA_API_KEY` (default model `nvidia/nemotron-3.5-lightning-30b-a3b`, override with `NVIDIA_MODEL`) **or** `GEMINI_API_KEY`. With `--provider auto` NVIDIA is preferred when its key exists. Gemini key ([get one](https://aistudio.google.com/apikey)), press `F5` → *Assistant (Gemini …)*.
    - Model default is `gemini-3.6-flash`. Model names change often — run `python -m mcp_assistant.cli --list-models` and set `GEMINI_MODEL` in `.env` if needed.
    - Vertex AI instead of a key: see the comments in `.env.example`.
 5. Or from any terminal: `python -m mcp_assistant.cli` (also installed as `mcp-assistant`).
@@ -68,6 +68,51 @@ In the chat: `/tools` `/servers` `/stats` `/audit` `/memory` `/policy` `/reset` 
 Flags: `--profile readonly|standard|admin`, `--reflect` (self-check answers against tool output), `--auto-approve` (still audited), `--once "prompt"`.
 
 You can also use the same servers directly from **VS Code's own MCP support** (`.vscode/mcp.json`, e.g. Copilot agent mode); it launches them with `python`, so start VS Code with the venv active or edit the `command`.
+
+## MCP Assistant Studio (web dashboard)
+
+A dark developer-tool dashboard over the **same** runtime the CLI uses — one MCP hub, one policy engine, one audit log. The CLI is untouched and still works.
+
+```bash
+pip install -e ".[dev]"
+mcp-assistant-studio                    # or: python -m mcp_assistant.studio   (opens http://localhost:8765)
+mcp-assistant-studio --provider mock    # no API key: plumbing is real, the model is a keyword stand-in
+```
+VS Code: `F5` → *Studio web UI (auto provider)* / *(offline mock)*. Node.js is **not** needed to run it — the built dashboard ships in `src/mcp_assistant/studio/web`.
+
+| Page | What is real |
+|---|---|
+| Overview | health, 10 servers / tools discovered live, tokens, latency, cost estimate, request-pipeline diagram, example prompts |
+| AI Workspace | streaming chat (SSE), live tool-call timeline, stop / regenerate, history search, context + memory panel, approvals |
+| Model Lab | active model, connection test, playground, latency/tokens/cost measured from real calls |
+| Database Explorer | tables, paging/sort/search, read-only SQL with highlighting, schema, ER diagram, history |
+| MCP Tools | registry discovered from the running servers, schema-driven run form, read / write / destructive badges |
+| Server Monitor | per-server status, calls, errors, latency, MCP ping, restart |
+| Memory · Knowledge · Repository & Files | the real memory / RAG / git / file tools, with retrieval traces and diffs |
+| Analytics · Security & Audit · Settings | charts built from `logs/*.jsonl`, policy and approval history, profile switching (lower-only), env *set / not set* |
+
+**Rules the dashboard follows**
+- API keys and connection strings never reach the browser (Settings shows only whether each variable is set).
+- Anything not recorded shows **“Unavailable”** — no invented metrics, no hardcoded tool list, no claimed context-window size or benchmarks.
+- Every tool call from the UI goes through the same policy → approval → redaction → audit path as the agent. The SQL tab is read-only; writes exist only as the approval-gated `db__execute_write` tool.
+- Local only: binds to 127.0.0.1, per-run session token, Host/Origin checks, JSON-only writes. Privileges can be lowered at runtime, never raised.
+- One runtime for all requests, a single turn lock (a second chat request gets HTTP 409), stop/cancel with history rollback.
+
+**Developing the frontend**
+```bash
+cd frontend && npm install
+npm run dev                 # http://localhost:3000 ; start the API with: mcp-assistant-studio --dev --no-browser
+npm run typecheck && npm test
+npm run build && cd .. && python scripts/sync_frontend.py   # refresh the bundled dashboard
+```
+Stack: Next.js 14 (App Router, static export) · TypeScript · Tailwind 3 · Lucide · Framer Motion · Recharts · React Query. Tailwind 3 was chosen on purpose (pure JS, no native binaries).
+
+**Known limitations (honest list)**
+- Live NVIDIA streaming is tested against a simulated server only; try it with your key and use *Model Lab → Test connection*.
+- If the model emits invalid tool-call JSON the NVIDIA adapter raises and the turn fails (pre-existing behaviour, now shown as an error in the UI).
+- Memory has no in-place edit (delete + re-add). Embeddings need Gemini credentials; otherwise retrieval is keyword-only (BM25).
+- The pipeline diagram is driven by real events, but only the stages the run actually touched are meaningful (e.g. no *Database* stage for a calculator call).
+- Single-user, single-process: not designed for multi-user hosting.
 
 ## Security model (read this before connecting real accounts)
 
@@ -87,7 +132,7 @@ You can also use the same servers directly from **VS Code's own MCP support** (`
   ```
   Its tools appear as `my_tool__<name>` and go through the same policy, audit and redaction.
 - `config/policy.yaml` — profiles, per-tool rules (`fnmatch` globs), step / tool-call / cost / rate limits.
-- `config/pricing.yaml` — **placeholder prices**; edit them to current Gemini rates so cost-per-request is meaningful.
+- `config/pricing.yaml` — **placeholder prices**; edit them to your provider's real rates (NVIDIA currently falls back to the Gemini placeholder prices, so cost figures are estimates only) so cost-per-request is meaningful.
 - Cloud extras: `pip install -e ".[gcp,aws,azure]"`; databases: `".[postgres]"` / `".[mysql]"`.
 
 ## Evaluate and gate regressions
@@ -106,25 +151,28 @@ src/mcp_assistant/
   cli.py  agent.py  runtime.py  hub.py        host: REPL, ReAct loop, wiring, MCP client hub
   policy.py  security.py  audit.py  tracing.py  governance + observability
   retrieval.py  memory.py  docs.py            BM25/RRF hybrid RAG, long-term memory, PDF/DOCX extraction
-  llm/{gemini,mock}.py                        providers (add Claude/OpenAI by implementing `generate`)
+  llm/{nvidia,gemini,mock}.py                 providers (nvidia = plain HTTPX; add others by implementing `generate`)
+  studio/                                     FastAPI JSON/SSE API + serves the built dashboard (studio/web)
   servers/*.py                                the 10 MCP servers (run standalone: python -m mcp_assistant.servers.db_server)
+frontend/                                   Next.js dashboard source (static export -> studio/web)
+scripts/sync_frontend.py                    copies frontend/out into the Python package
 config/  workspace/  eval/  tests/  .vscode/
 ```
 
 ## What has and hasn't been verified
 
-Verified here (43 automated tests + manual runs): all 10 servers start over stdio and expose 52 tools; policy profiles, approval
+Verified here (72 Python tests + 7 frontend unit tests + manual runs; counts as of this build): all 10 servers start over stdio and expose 52 tools; policy profiles, approval
 (declined/approved), dry-run writes, audit log; SQL guard, path sandbox, SSRF guard, git option-injection guard, injection flagging;
 BM25 + fusion retrieval; the Gemini adapter against the SDK's real request/response types (schema conversion, history replay,
 parsing) using stubbed responses; the golden eval gate.
 
-**Not verified (no network/credentials in my build environment):** a live Gemini call, live Gemini embeddings, web search, public
+**Not verified (no network/credentials in my build environment):** a live NVIDIA call (the HTTPX adapter and its SSE streaming are tested against a simulated server only), a live Gemini call, live Gemini embeddings, web search, public
 URL fetch, and real Slack / Gmail / Notion / GCP / AWS / Azure / GitHub calls. These follow each service's documented API but expect
 to fix small issues on first contact (the server logs are in `logs/server-<name>.log`). Tested on Python 3.13; written for 3.10+.
 
 ## Troubleshooting
 
-- *"No Gemini credentials found"* → add `GEMINI_API_KEY` to `.env`, or use `--provider mock`.
+- *"No NVIDIA credentials found" / "No Gemini credentials found"* → add `NVIDIA_API_KEY` or `GEMINI_API_KEY` to `.env`, or use `--provider mock`.
 - *Model not found / 404* → `python -m mcp_assistant.cli --list-models`, then set `GEMINI_MODEL`.
 - *A server shows red at startup* → open `logs/server-<name>.log`.
 - *Want a clean demo database* → `python scripts/seed_demo_data.py`.

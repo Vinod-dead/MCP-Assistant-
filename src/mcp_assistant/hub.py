@@ -98,22 +98,39 @@ class MCPHub:
         self.connections = {name: ServerConnection(name, p) for name, p in servers.items()}
         await asyncio.gather(*(c.start() for c in self.connections.values()))
         for conn in self.connections.values():
-            for t in conn.tools:
-                ann = t.annotations
-                read_only = bool(getattr(ann, "read_only_hint", None))
-                destructive = getattr(ann, "destructive_hint", None)
-                open_world = getattr(ann, "open_world_hint", None)
-                info = ToolInfo(
-                    server=conn.name,
-                    name=t.name,
-                    description=(t.description or "").strip(),
-                    input_schema=t.input_schema or {"type": "object", "properties": {}},
-                    read_only=read_only,
-                    # MCP spec defaults: not read-only => destructive and open-world unless said otherwise
-                    destructive=True if destructive is None else bool(destructive),
-                    open_world=True if open_world is None else bool(open_world),
-                )
-                self.tools[info.qualified] = info
+            self._register(conn)
+
+    def _register(self, conn: "ServerConnection") -> None:
+        for t in conn.tools:
+            ann = t.annotations
+            read_only = bool(getattr(ann, "read_only_hint", None))
+            destructive = getattr(ann, "destructive_hint", None)
+            open_world = getattr(ann, "open_world_hint", None)
+            info = ToolInfo(
+                server=conn.name,
+                name=t.name,
+                description=(t.description or "").strip(),
+                input_schema=t.input_schema or {"type": "object", "properties": {}},
+                read_only=read_only,
+                # MCP spec defaults: not read-only => destructive and open-world unless said otherwise
+                destructive=True if destructive is None else bool(destructive),
+                open_world=True if open_world is None else bool(open_world),
+            )
+            self.tools[info.qualified] = info
+
+    async def restart(self, name: str) -> tuple[bool, str | None]:
+        """Stop and re-launch one server, then refresh its tools. Returns (running, error)."""
+        old = self.connections.get(name)
+        if old is None:
+            raise KeyError(name)
+        await old.stop()
+        for qualified in [q for q, t in self.tools.items() if t.server == name]:
+            del self.tools[qualified]
+        conn = ServerConnection(name, old.params)
+        self.connections[name] = conn
+        ok = await conn.start()
+        self._register(conn)
+        return ok, conn.error
 
     def status(self) -> list[tuple[str, bool, int, str | None]]:
         return [(n, c.session is not None, len(c.tools), c.error) for n, c in self.connections.items()]
